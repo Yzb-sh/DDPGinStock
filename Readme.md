@@ -43,7 +43,7 @@ matplotlib >= 3.4.0
 
 ### 1. 克隆项目
 ```bash
-git clone [项目地址]
+git clone https://github.com/Yzb-sh/DDPGinStock.git
 cd DDPGinStock（LSTM）
 ```
 
