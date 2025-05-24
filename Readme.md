@@ -39,6 +39,13 @@ matplotlib >= 3.4.0
 - 支持CUDA的GPU（可选，用于加速训练）
 - 内存：建议8GB以上
 
+## 结果展示
+
+### DDPG+LSTM混合模型训练结果
+![image](models\reward-3\ddpg_lstm\600016\600016_ddpg_lstm_reward3_training_curves_20250524_052751.png)
+### DDPG+LSTM混合模型测试结果
+![image](results\600016_test_result_ddpg_lstm.png)
+
 ## 安装使用
 
 ### 1. 克隆项目
