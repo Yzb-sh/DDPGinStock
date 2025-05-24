@@ -63,7 +63,7 @@ def load_model(model_path):
         else:
             raise e
 
-def test_model(code, ddpg, reward_type=3, verbose=True, save_results=True):
+def test_model(code, ddpg, reward_type=3, verbose=True, save_results=True, model_type='ddpg', seq_len=10):
     """
     测试DDPG模型在股票交易中的表现
     
@@ -73,16 +73,21 @@ def test_model(code, ddpg, reward_type=3, verbose=True, save_results=True):
         reward_type (int): 使用的奖励函数类型
         verbose (bool): 是否打印详细信息
         save_results (bool): 是否保存测试结果到文件
+        model_type (str): 模型类型 ('ddpg' 或 'ddpg_lstm')
+        seq_len (int): LSTM序列长度，仅当model_type='ddpg_lstm'时有效
     
     返回:
         tuple: (基准收益率列表, 模型收益率列表, 日期列表, 交易信息列表)
     """
+    print(f"测试模型类型: {model_type}")
+    
     # 分割数据
     datas, test_datas = get_data(code)
     
     # 设置环境
     env = stockEnv.StockTradingEnv(datas, test_datas)
     env.seed(1234)
+    env.set_lstm_mode(model_type == 'ddpg_lstm')  # 根据模型类型设置LSTM模式
     env.test_set()
     
     # 计算基准收益 (买入并持有策略)
@@ -187,6 +192,7 @@ def test_model(code, ddpg, reward_type=3, verbose=True, save_results=True):
     
     if verbose:
         print(f"股票代码: {code}")
+        print(f"模型类型: {model_type}")
         print(f"最大收益: {max_profit:.2f}%")
         print(f"最大回撤: {max_drawdown:.2f}%")
         print(f"最终收益: {final_profit:.2f}%")
@@ -201,13 +207,13 @@ def test_model(code, ddpg, reward_type=3, verbose=True, save_results=True):
     if save_results:
         save_test_results(code, info_list, final_profit, max_profit, max_drawdown, 
                          benchmark_final, outperform, reward_type, sharpe_ratio, 
-                         annualized_return, annualized_volatility, simple_sharpe)
+                         annualized_return, annualized_volatility, simple_sharpe, model_type)
     
     return basic_profit, model_profit, date_list, info_list
 
 def save_test_results(code, info_list, final_profit, max_profit, max_drawdown, 
                      benchmark_final, outperform, reward_type, sharpe_ratio=0, 
-                     annualized_return=0, annualized_volatility=0, simple_sharpe=0):
+                     annualized_return=0, annualized_volatility=0, simple_sharpe=0, model_type='ddpg'):
     """
     保存测试结果到文件
     
@@ -224,6 +230,7 @@ def save_test_results(code, info_list, final_profit, max_profit, max_drawdown,
         annualized_return (float): 年化收益率
         annualized_volatility (float): 年化波动率
         simple_sharpe (float): 简化夏普比率
+        model_type (str): 模型类型 ('ddpg' 或 'ddpg_lstm')
     """
     import datetime
     
@@ -236,16 +243,17 @@ def save_test_results(code, info_list, final_profit, max_profit, max_drawdown,
     
     # 保存详细交易记录为CSV
     df = pd.DataFrame(info_list)
-    csv_filename = f"./results/{code}_test_detail_{timestamp}.csv"
+    csv_filename = f"./results/{code}_{model_type}_test_detail_{timestamp}.csv"
     df.to_csv(csv_filename, index=False, encoding='utf-8-sig')
     
     # 保存汇总信息为文本文件
-    summary_filename = f"./results/{code}_test_summary_{timestamp}.txt"
+    summary_filename = f"./results/{code}_{model_type}_test_summary_{timestamp}.txt"
     with open(summary_filename, 'w', encoding='utf-8') as f:
         f.write(f"DDPG股票交易模型测试报告\n")
         f.write(f"=" * 50 + "\n")
         f.write(f"测试时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write(f"股票代码: {code}\n")
+        f.write(f"模型类型: {model_type}\n")
         f.write(f"奖励函数类型: {reward_type}\n")
         f.write(f"测试期间: {len(info_list)}个交易日\n")
         f.write(f"\n业绩指标:\n")

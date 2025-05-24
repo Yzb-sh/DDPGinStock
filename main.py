@@ -70,19 +70,35 @@ def main():
         train.train(args.code, args.reward, args.seed, args.model_type, args.seq_len)
         
     elif args.action == 'test':
-        # 确定模型路径
-        model_path = args.model if args.model else f"./models/reward-{args.reward}/{args.code}/best.pt"
+        # 确定模型路径，根据模型类型构建正确的路径
+        if args.model:
+            model_path = args.model
+            # 从模型路径推断模型类型
+            if 'ddpg_lstm' in model_path:
+                model_type = 'ddpg_lstm'
+            else:
+                model_type = 'ddpg'
+        else:
+            model_type = args.model_type  # 使用用户指定的模型类型
+            model_path = f"./models/reward-{args.reward}/{model_type}/{args.code}/best.pt"
         
         if not os.path.exists(model_path):
             print(f"错误: 模型文件 {model_path} 不存在")
+            print(f"请确认模型类型 ({model_type}) 和奖励函数类型 ({args.reward}) 是否正确")
             return
         
-        print(f"开始测试模型, 股票代码: {args.code}, 模型路径: {model_path}")
+        print(f"开始测试模型, 股票代码: {args.code}, 模型路径: {model_path}, 模型类型: {model_type}")
+        
+        # 加载模型
         ddpg = test.load_model(model_path)
-        basic_profit, model_profit, date_list, info_list = test.test_model(args.code, ddpg, int(args.reward))
+        
+        # 根据模型类型设置测试环境 (需要修改test_model函数)
+        basic_profit, model_profit, date_list, info_list = test.test_model(
+            args.code, ddpg, int(args.reward), model_type=model_type, seq_len=args.seq_len
+        )
         
         if args.save:
-            save_path = f"./results/{args.code}_test_result.png"
+            save_path = f"./results/{args.code}_test_result_{model_type}.png"
             test.plot_results(args.code, basic_profit, model_profit, date_list, save_path)
         else:
             test.plot_results(args.code, basic_profit, model_profit, date_list)
@@ -92,8 +108,12 @@ def main():
             print("错误: 获取交易建议需要指定余额(--balance)、持股数(--shares)和初始资金(--initial)")
             return
         
-        # 确定模型路径
-        model_path = args.model if args.model else f"./models/reward-{args.reward}/{args.code}/best.pt"
+        # 确定模型路径，根据模型类型构建正确的路径
+        if args.model:
+            model_path = args.model
+        else:
+            model_type = args.model_type  # 使用用户指定的模型类型
+            model_path = f"./models/reward-{args.reward}/{model_type}/{args.code}/best.pt"
         
         if not os.path.exists(model_path):
             print(f"错误: 模型文件 {model_path} 不存在")

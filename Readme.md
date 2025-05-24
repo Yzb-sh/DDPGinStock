@@ -61,20 +61,23 @@ pip install torch numpy pandas matplotlib
 
 #### 1. 训练模型
 ```bash
-# 训练普通DDPG模型
+# 训练普通DDPG模型 (保存到 ./models/reward-3/ddpg/600016/)
 python main.py train --code 600016 --reward 3 --seed 1234
 
-# 训练LSTM增强版DDPG模型
+# 训练LSTM增强版DDPG模型 (保存到 ./models/reward-3/ddpg_lstm/600016/)
 python main.py train --code 600016 --reward 3 --seed 1234 --model_type ddpg_lstm --seq_len 10
 ```
 
 #### 2. 测试模型
 ```bash
-# 使用默认模型路径测试
-python main.py test --code 600016
+# 测试普通DDPG模型 (自动从 ./models/reward-3/ddpg/600016/best.pt 加载)
+python main.py test --code 600016 --reward 3 --model_type ddpg
 
-# 指定模型路径测试
-python main.py test --code 600016 --model ./models/reward-3/600016/best.pt
+# 测试LSTM模型 (自动从 ./models/reward-3/ddpg_lstm/600016/best.pt 加载)
+python main.py test --code 600016 --reward 3 --model_type ddpg_lstm --seq_len 10
+
+# 或者手动指定模型路径 (会自动推断模型类型)
+python main.py test --code 600016 --model ./models/reward-3/ddpg_lstm/600016/best.pt
 ```
 
 #### 3. 获取交易建议
