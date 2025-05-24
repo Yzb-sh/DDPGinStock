@@ -31,6 +31,22 @@ ENV/
 *.swo
 
 # Project specific
+# 忽略模型文件
+models/**/*.pt
+models/**/*.pth
+# 忽略数据文件
+data/
+*.csv
+*.log
+# 忽略临时文件
+tmp/
+# 但保留图片文件
+!models/**/*.png
+!results/**/*.png
+!results/**/*.jpg
+!results/**/*.jpeg
+!results/**/*.gif
+
 results/
 models/
 tmp/
