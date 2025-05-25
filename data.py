@@ -4,9 +4,9 @@ import os
 import time
 import sys
 import io
+from datetime import datetime
 
-
-def getData(code='000581', start_date='2000-1-1', end_date='2023-5-18'):
+def getData(code='000581', start_date='2000-1-1', end_date=str(datetime.now().date())):
     """
     从baostock获取股票历史数据
     
