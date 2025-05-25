@@ -147,7 +147,7 @@ def get_trading_suggestion(code, balance, shares, initial_fund, model, model_typ
         tuple: (开盘建议, 收盘建议)
     """
     # 获取当前状态和最新价格
-    path = data.getData(code=code)
+    path = data.getData(code=code, end_date=str(datetime.now().date()))
     datas = pd.read_csv(path)
     datas = data.cleanData(datas)
     datas = data.computeData(datas)
@@ -155,8 +155,7 @@ def get_trading_suggestion(code, balance, shares, initial_fund, model, model_typ
     latest_date = datas['date'].iloc[-1]
     
     print(f"数据日期: {latest_date}")
-    print(f"股价 (后复权): {latest_price:.2f}元")
-    print(f"注: 使用后复权价格，可能与实时市价有差异")
+    print(f"股价 (前复权): {latest_price:.2f}元")
     
     # 直接使用已获取的数据计算状态向量，避免重复调用data.getData()
     # 计算指标范围
