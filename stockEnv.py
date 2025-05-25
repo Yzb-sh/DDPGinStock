@@ -6,7 +6,7 @@ import pandas as pd
 
 # 全局常量
 MAX_PREDICT_RATE = 50  # 最大预测收益率倍数
-INITIAL_ACCOUNT_BALANCE = 50e4  # 初始资金 50万元
+INITIAL_ACCOUNT_BALANCE = 1e4  # 初始资金 1万元
 
 
 class StockTradingEnv(gym.Env):
@@ -154,7 +154,7 @@ class StockTradingEnv(gym.Env):
         
     def test_set(self):
         """设置为测试模式，使用较低的手续费率"""
-        self.service_charge = 0.001
+        self.service_charge = 0.0005
 
     def _next_observation(self):
         """
