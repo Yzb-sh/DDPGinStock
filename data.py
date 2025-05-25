@@ -2,6 +2,8 @@ import baostock as bs
 import pandas as pd
 import os
 import time
+import sys
+import io
 
 
 def getData(code='000581', start_date='2000-1-1', end_date='2023-5-18'):
@@ -16,34 +18,46 @@ def getData(code='000581', start_date='2000-1-1', end_date='2023-5-18'):
     返回:
         str: 保存的文件路径
     """
-    # 登录系统
-    lg = bs.login()
+    # 临时重定向stdout来抑制baostock的输出
+    old_stdout = sys.stdout
+    sys.stdout = io.StringIO()
     
-    # 获取沪深A股历史K线数据
-    rs = bs.query_history_k_data_plus(
-        f"sh.{code}",
-        "date,code,open,high,low,close,preclose,volume,amount,turn,pctChg,peTTM,pbMRQ,psTTM,pcfNcfTTM",
-        start_date=start_date, 
-        end_date=end_date,
-        frequency="d", 
-        adjustflag="2"
-    )
+    try:
+        print("正在连接数据源...", file=old_stdout)
+        # 登录系统
+        lg = bs.login()
+        
+        print(f"正在获取股票 {code} 的历史数据...", file=old_stdout)
+        # 获取沪深A股历史K线数据
+        rs = bs.query_history_k_data_plus(
+            f"sh.{code}",
+            "date,code,open,high,low,close,preclose,volume,amount,turn,pctChg,peTTM,pbMRQ,psTTM,pcfNcfTTM",
+            start_date=start_date, 
+            end_date=end_date,
+            frequency="d", 
+            adjustflag="2"
+        )
 
-    # 处理结果集
-    data_list = []
-    while (rs.error_code == '0') & rs.next():
-        data_list.append(rs.get_row_data())
-    result = pd.DataFrame(data_list, columns=rs.fields)
+        # 处理结果集
+        data_list = []
+        while (rs.error_code == '0') & rs.next():
+            data_list.append(rs.get_row_data())
+        result = pd.DataFrame(data_list, columns=rs.fields)
 
-    # 确保目录存在
-    os.makedirs("./data", exist_ok=True)
-    
-    # 保存结果集到csv文件
-    path = f"./data/{code}.csv"
-    result.to_csv(path, index=False)
+        # 确保目录存在
+        os.makedirs("./data", exist_ok=True)
+        
+        # 保存结果集到csv文件
+        path = f"./data/{code}.csv"
+        result.to_csv(path, index=False)
 
-    # 登出系统
-    bs.logout()
+        # 登出系统
+        bs.logout()
+        print("数据获取完成", file=old_stdout)
+        
+    finally:
+        # 恢复stdout
+        sys.stdout = old_stdout
 
     # 返回文件路径
     return path

@@ -90,8 +90,20 @@ python main.py test --code 600016 --model ./models/reward-3/ddpg_lstm/600016/bes
 
 #### 3. 获取交易建议
 ```bash
-python main.py suggest --code 600016 --balance 100000 --shares 1000 --initial 200000
+# 使用DDPG+LSTM模型获取交易建议
+python main.py suggest --code 600016 --balance 10000 --shares 0 --initial 10000 --model_type ddpg_lstm
+
+# 使用普通DDPG模型获取交易建议
+python main.py suggest --code 600016 --balance 10000 --shares 0 --initial 10000 --model_type ddpg
+
+# 手动指定模型文件路径
+python main.py suggest --code 600016 --model ./models/reward-3/ddpg_lstm/600016/best.pt --balance 10000 --shares 0 --initial 10000
 ```
+
+**注意事项：**
+- 系统会自动检测可用的模型文件，如果指定的模型不存在，会列出所有可用模型
+- 股价数据使用后复权价格，可能与实时市价存在差异
+- 交易建议基于历史数据训练的模型，仅供参考，不构成投资建议
 
 ### 参数详解
 

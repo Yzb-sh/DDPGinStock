@@ -130,7 +130,7 @@ def get_state_vector(code, balance, shares, initial_fund, end_date=None, seq_len
     return np.array(obs_seq)
 
 
-def get_trading_suggestion(code, balance, shares, initial_fund, model):
+def get_trading_suggestion(code, balance, shares, initial_fund, model, model_type='ddpg', seq_len=10):
     """
     根据模型给出交易建议
     
@@ -140,40 +140,150 @@ def get_trading_suggestion(code, balance, shares, initial_fund, model):
         shares (int): 当前持股数
         initial_fund (float): 初始资金
         model: 训练好的DDPG模型
+        model_type (str): 模型类型 ('ddpg' 或 'ddpg_lstm')
+        seq_len (int): LSTM序列长度，仅当model_type='ddpg_lstm'时有效
     
     返回:
         tuple: (开盘建议, 收盘建议)
     """
-    # 检测是否使用LSTM模型
-    use_lstm = getattr(model, 'use_lstm', False)
-    seq_len = getattr(model.replay_buffer, 'seq_len', 10) if use_lstm else 1
-    
     # 获取当前状态和最新价格
     path = data.getData(code=code)
     datas = pd.read_csv(path)
     datas = data.cleanData(datas)
     datas = data.computeData(datas)
     latest_price = datas['close'].iloc[-1]
+    latest_date = datas['date'].iloc[-1]
     
-    # 获取状态向量
-    state = get_state_vector(code, balance, shares, initial_fund, seq_len=seq_len)
+    print(f"数据日期: {latest_date}")
+    print(f"股价 (后复权): {latest_price:.2f}元")
+    print(f"注: 使用后复权价格，可能与实时市价有差异")
+    
+    # 直接使用已获取的数据计算状态向量，避免重复调用data.getData()
+    # 计算指标范围
+    max_open = max(datas['open'])
+    min_open = min(datas['open'])
+    range_open = max_open - min_open
+    
+    max_high = max(datas['high'])
+    min_high = min(datas['high'])
+    range_high = max_high - min_high
+    
+    max_low = max(datas['low'])
+    min_low = min(datas['low'])
+    range_low = max_low - min_low
+    
+    max_close = max(datas['close'])
+    min_close = min(datas['close'])
+    range_close = max_close - min_close
+    
+    max_preclose = max(datas['preclose'])
+    min_preclose = min(datas['preclose'])
+    range_preclose = max_preclose - min_preclose
+    
+    max_volume = max(datas['volume'])
+    min_volume = min(datas['volume'])
+    range_volume = max_volume - min_volume
+    
+    max_turn = max(datas['turn'])
+    min_turn = min(datas['turn'])
+    range_turn = max_turn - min_turn
+    
+    max_pctChg = max(datas['pctChg'])
+    min_pctChg = min(datas['pctChg'])
+    range_pctChg = max_pctChg - min_pctChg
+    
+    max_peTTM = max(datas['peTTM'])
+    min_peTTM = min(datas['peTTM'])
+    range_peTTM = max_peTTM - min_peTTM
+    
+    max_MACD = max(datas['MACD'])
+    min_MACD = min(datas['MACD'])
+    range_MACD = max_MACD - min_MACD
+    
+    max_RSI = max(datas['RSI30'])
+    min_RSI = min(datas['RSI30'])
+    range_RSI = max_RSI - min_RSI
+    
+    max_CCI = max(datas['CCI30'])
+    min_CCI = min(datas['CCI30'])
+    range_CCI = max_CCI - min_CCI
+    
+    max_BOLLub = max(datas['BOLLub30'])
+    min_BOLLub = min(datas['BOLLub30'])
+    range_BOLLub = max_BOLLub - min_BOLLub
+    
+    max_BOLLlb = max(datas['BOLLlb30'])
+    min_BOLLlb = min(datas['BOLLlb30'])
+    range_BOLLlb = max_BOLLlb - min_BOLLlb
+    
+    # 构建状态向量函数
+    def create_state(idx):
+        return np.array([
+            (datas['open'].iloc[idx] - min_open) / range_open,
+            (datas['high'].iloc[idx] - min_high) / range_high,
+            (datas['low'].iloc[idx] - min_low) / range_low,
+            (datas['close'].iloc[idx] - min_close) / range_close,
+            (datas['preclose'].iloc[idx] - min_preclose) / range_preclose,
+            (datas['volume'].iloc[idx] - min_volume) / range_volume,
+            (datas['turn'].iloc[idx] - min_turn) / range_turn,
+            (datas['pctChg'].iloc[idx] - min_pctChg) / range_pctChg,
+            (datas['peTTM'].iloc[idx] - min_peTTM) / range_peTTM,
+            balance / (50 * initial_fund),
+            shares / (50 * initial_fund / min_low),
+            (shares * datas['close'].iloc[idx]) / (shares * datas['close'].iloc[idx] + balance),
+            (datas['MACD'].iloc[idx] - min_MACD) / range_MACD,
+            (datas['RSI30'].iloc[idx] - min_RSI) / range_RSI,
+            (datas['CCI30'].iloc[idx] - min_CCI) / range_CCI,
+            (datas['BOLLub30'].iloc[idx] - min_BOLLub) / range_BOLLub,
+            (datas['BOLLlb30'].iloc[idx] - min_BOLLlb) / range_BOLLlb,
+        ])
+    
+    # 根据模型类型获取状态向量
+    if model_type == 'ddpg_lstm':
+        # LSTM模型需要序列状态
+        obs_seq = []
+        last_n_days = min(seq_len, len(datas))
+        
+        for i in range(last_n_days):
+            idx = -last_n_days + i
+            obs_seq.append(create_state(idx))
+        
+        # 如果数据不足seq_len天，用最早的状态填充
+        if len(obs_seq) < seq_len:
+            first_state = obs_seq[0]
+            while len(obs_seq) < seq_len:
+                obs_seq.insert(0, first_state)
+        
+        state = np.array(obs_seq)
+        print(f"LSTM状态序列维度: {state.shape}")
+    else:
+        # 普通DDPG模型只需要单个状态向量
+        state = create_state(-1)  # 取最后一个状态
+        print(f"DDPG状态向量维度: {state.shape}")
     
     # 使用模型预测动作
     action = model.select_action(state)
+    print(f"模型预测动作: [{action[0]:.4f}, {action[1]:.4f}]")
     
     # 解释动作
     open_action = "开盘时观望"
     close_action = "收盘时观望"
     
-    if action[0] > 0:
-        sell_shares = int(shares * action[0] / 100) * 100  # 向下取整到100的倍数
+    # 卖出动作 (action[0])
+    if action[0] > 0 and shares > 0:
+        sell_ratio = min(action[0], 1.0)  # 限制在0-1之间
+        sell_shares = int(shares * sell_ratio // 100) * 100  # 向下取整到100的倍数
         if sell_shares > 0:
-            open_action = f"开盘时卖出{sell_shares}股"
+            estimated_income = sell_shares * latest_price * 0.997  # 考虑手续费
+            open_action = f"开盘时卖出{sell_shares}股，预计收入{estimated_income:.2f}元"
     
-    if action[1] > 0:
-        buy_amount = balance * action[1]
-        max_shares = int(buy_amount / (latest_price * 1.003) // 100) * 100
-        if max_shares > 0:
+    # 买入动作 (action[1])
+    if action[1] > 0 and balance > 0:
+        buy_ratio = min(action[1], 1.0)  # 限制在0-1之间
+        buy_amount = balance * buy_ratio
+        # 考虑手续费和涨停限制
+        max_shares = int(buy_amount / (latest_price * 1.103) // 100) * 100  # 考虑10%涨停+手续费
+        if max_shares > 0 and buy_amount >= latest_price * 100:  # 至少能买1手
             close_action = f"收盘时花费{buy_amount:.2f}元买入约{max_shares}股"
     
     return open_action, close_action

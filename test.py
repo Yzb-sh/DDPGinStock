@@ -1,7 +1,6 @@
 import numpy as np
 import os
 import data
-import torch
 import DDPG
 import stockEnv
 import pandas as pd
@@ -52,6 +51,7 @@ def load_model(model_path):
     返回:
         DDPG: 加载的DDPG模型
     """
+    import torch
     try:
         # 首先尝试默认加载方式
         return torch.load(model_path)
@@ -59,7 +59,52 @@ def load_model(model_path):
         # 如果出现weights_only相关错误，使用weights_only=False
         if "weights_only" in str(e) or "WeightsUnpickler" in str(e):
             print("警告: 使用weights_only=False加载模型文件。请确保模型文件来源可信。")
-            return torch.load(model_path, weights_only=False)
+            try:
+                return torch.load(model_path, weights_only=False)
+            except Exception as e2:
+                # 如果还是失败，尝试添加安全全局变量
+                print("尝试添加安全全局变量...")
+                import torch.serialization
+                
+                # 添加常用的PyTorch类到安全全局变量
+                safe_globals = [
+                    torch.nn.Linear,
+                    torch.nn.ReLU,
+                    torch.nn.Tanh,
+                    torch.nn.Module,
+                    torch.nn.Sequential,
+                    torch.nn.ModuleList,
+                    torch.nn.Parameter,
+                    torch.Tensor,
+                    torch.FloatTensor,
+                    torch.LongTensor,
+                    torch.optim.Adam,
+                    torch.optim.SGD,
+                ]
+                
+                # 尝试导入DDPG相关类
+                try:
+                    import DDPG
+                    safe_globals.extend([
+                        DDPG.DDPG,
+                        DDPG.Actor,
+                        DDPG.ActorLSTM,
+                        DDPG.Critic,
+                        DDPG.ReplayBuffer,
+                        DDPG.SequenceReplayBuffer,
+                    ])
+                except ImportError:
+                    pass
+                
+                # 添加到安全全局变量
+                torch.serialization.add_safe_globals(safe_globals)
+                
+                try:
+                    return torch.load(model_path)
+                except Exception as e3:
+                    # 最后的尝试：使用weights_only=False
+                    print("最终尝试: 使用weights_only=False...")
+                    return torch.load(model_path, weights_only=False)
         else:
             raise e
 
