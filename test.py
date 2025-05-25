@@ -153,7 +153,8 @@ def test_model(code, ddpg, reward_type=3, verbose=True, save_results=True, model
             '总资产': f"{total_value:.2f}", 
             '收益率': percent_str,
             '基准收益率': f"{basic_profit[i] * 100:.2f}%",
-            '动作值': f"[{action[0]:.4f}]",
+            '动作值1': f"[{action[0]:.4f}]",
+            '动作值2': f"[{action[1]:.4f}]",
             '日收益率': f"{daily_return * 100:.4f}%"
         })
         
